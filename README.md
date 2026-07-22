@@ -126,4 +126,4 @@ curl http://localhost:8765/v1/chat/completions \
 
 ## License
 
-MIT
+Apache License 2.0
