@@ -1,4 +1,4 @@
-# Aily Workbench Server v2
+# Aily Workbench Server v0.2
 
 飞书 Aily Workbench 长连接服务端，通过 WebSocket 实时接收事件，提供 HTTP API 和 OpenAI 兼容接口。
 
