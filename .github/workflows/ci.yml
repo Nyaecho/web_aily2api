@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy
+          pip install ruff mypy pytest pytest-asyncio
           pip install -r requirements.txt
 
       - name: Ruff lint
@@ -31,4 +31,8 @@ jobs:
 
       - name: Mypy type check
         run: mypy project/ --ignore-missing-imports
+        continue-on-error: true
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
         continue-on-error: true
