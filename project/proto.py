@@ -84,11 +84,16 @@ def decode_frame(data: bytes) -> dict:
         wire_type = tag & 7
         if wire_type == 0:
             val, offset = decode_varint(data, offset)
-            if field_num == 1: frame['seq_id'] = val
-            elif field_num == 2: frame['log_id'] = val
-            elif field_num == 3: frame['service'] = val
-            elif field_num == 4: frame['method'] = val
-            elif field_num == 12: frame['frame_type'] = val
+            if field_num == 1:
+                frame['seq_id'] = val
+            elif field_num == 2:
+                frame['log_id'] = val
+            elif field_num == 3:
+                frame['service'] = val
+            elif field_num == 4:
+                frame['method'] = val
+            elif field_num == 12:
+                frame['frame_type'] = val
         elif wire_type == 2:
             length, offset = decode_varint(data, offset)
             raw = data[offset:offset + length]
@@ -104,12 +109,16 @@ def decode_frame(data: bytes) -> dict:
                         hlen, ho = decode_varint(raw, ho)
                         hval = raw[ho:ho + hlen]
                         ho += hlen
-                        if hfn == 1: header['key'] = hval.decode('utf-8', errors='replace')
-                        elif hfn == 2: header['value'] = hval.decode('utf-8', errors='replace')
+                        if hfn == 1:
+                            header['key'] = hval.decode('utf-8', errors='replace')
+                        elif hfn == 2:
+                            header['value'] = hval.decode('utf-8', errors='replace')
                     elif hwt == 0:
                         hval, ho = decode_varint(raw, ho)
-                        if hfn == 1: header['key'] = str(hval)
-                        elif hfn == 2: header['value'] = str(hval)
+                        if hfn == 1:
+                            header['key'] = str(hval)
+                        elif hfn == 2:
+                            header['value'] = str(hval)
                 frame['headers'].append(header)
             elif field_num == 6:
                 frame['payload'] = raw

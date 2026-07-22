@@ -145,7 +145,6 @@ class WSConnectionManager:
                     continue
                 frame = decode_frame(data)
                 if frame.get('service') == 0 and frame.get('method') == 5:
-                    seq_id = frame.get('seq_id', 0)
                     log_id = frame.get('log_id', 0)
                     ack = encode_frame(
                         seq_id=0, log_id=log_id,

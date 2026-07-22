@@ -1,13 +1,18 @@
 """Session 事件监听器"""
 
+from __future__ import annotations
+
 import json
 import time
 import logging
 import asyncio
 from dataclasses import dataclass, field
-from typing import Optional, Set, List, AsyncGenerator
+from typing import Optional, Set, List, AsyncGenerator, TYPE_CHECKING
 
 from .constants import FALLBACK_POLL_INTERVAL
+
+if TYPE_CHECKING:
+    from .http_client import AilyHTTPClient
 
 log = logging.getLogger('aily')
 
@@ -114,7 +119,7 @@ class SessionWatcher:
                     yield f'data: {json.dumps({"type": "stream.end", "reason": "run.completed"}, ensure_ascii=False)}\n\n'
                     break
             except asyncio.TimeoutError:
-                yield f': heartbeat\n\n'
+                yield ': heartbeat\n\n'
 
     async def wait_for_completion(self, timeout: float = 600) -> List[dict]:
         """阻塞等待 session 完成，返回所有新事件"""

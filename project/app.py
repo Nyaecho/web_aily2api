@@ -1,6 +1,5 @@
 """FastAPI 应用创建与生命周期管理"""
 
-import time
 import logging
 
 from fastapi import FastAPI
