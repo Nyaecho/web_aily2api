@@ -47,8 +47,15 @@ def encode_tag(field_num: int, wire_type: int) -> bytes:
     return encode_varint((field_num << 3) | wire_type)
 
 
-def encode_frame(seq_id=None, log_id=None, service=None, method=None,
-                 headers=None, payload=None, frame_type=None) -> bytes:
+def encode_frame(
+    seq_id=None,
+    log_id=None,
+    service=None,
+    method=None,
+    headers=None,
+    payload=None,
+    frame_type=None,
+) -> bytes:
     """编码完整 frame 为 bytes"""
     parts = []
     if seq_id is not None:
@@ -62,8 +69,16 @@ def encode_frame(seq_id=None, log_id=None, service=None, method=None,
     if headers:
         for h in headers:
             sub = bytearray()
-            key = h.get('key', '').encode('utf-8') if isinstance(h.get('key'), str) else b''
-            val = h.get('value', '').encode('utf-8') if isinstance(h.get('value'), str) else b''
+            key = (
+                h.get("key", "").encode("utf-8")
+                if isinstance(h.get("key"), str)
+                else b""
+            )
+            val = (
+                h.get("value", "").encode("utf-8")
+                if isinstance(h.get("value"), str)
+                else b""
+            )
             sub += encode_tag(1, 2) + encode_varint(len(key)) + key
             sub += encode_tag(2, 2) + encode_varint(len(val)) + val
             parts.append(encode_tag(5, 2) + encode_varint(len(sub)) + bytes(sub))
@@ -71,12 +86,12 @@ def encode_frame(seq_id=None, log_id=None, service=None, method=None,
         parts.append(encode_tag(6, 2) + encode_varint(len(payload)) + payload)
     if frame_type is not None:
         parts.append(encode_tag(12, 0) + encode_varint(frame_type))
-    return b''.join(parts)
+    return b"".join(parts)
 
 
 def decode_frame(data: bytes) -> dict:
     """解码 bytes 为 frame dict"""
-    frame = {'headers': []}
+    frame = {"headers": []}
     offset = 0
     while offset < len(data):
         tag, offset = decode_varint(data, offset)
@@ -85,18 +100,18 @@ def decode_frame(data: bytes) -> dict:
         if wire_type == 0:
             val, offset = decode_varint(data, offset)
             if field_num == 1:
-                frame['seq_id'] = val
+                frame["seq_id"] = val
             elif field_num == 2:
-                frame['log_id'] = val
+                frame["log_id"] = val
             elif field_num == 3:
-                frame['service'] = val
+                frame["service"] = val
             elif field_num == 4:
-                frame['method'] = val
+                frame["method"] = val
             elif field_num == 12:
-                frame['frame_type'] = val
+                frame["frame_type"] = val
         elif wire_type == 2:
             length, offset = decode_varint(data, offset)
-            raw = data[offset:offset + length]
+            raw = data[offset : offset + length]
             offset += length
             if field_num == 5:
                 header = {}
@@ -107,21 +122,21 @@ def decode_frame(data: bytes) -> dict:
                     hwt = htag & 7
                     if hwt == 2:
                         hlen, ho = decode_varint(raw, ho)
-                        hval = raw[ho:ho + hlen]
+                        hval = raw[ho : ho + hlen]
                         ho += hlen
                         if hfn == 1:
-                            header['key'] = hval.decode('utf-8', errors='replace')
+                            header["key"] = hval.decode("utf-8", errors="replace")
                         elif hfn == 2:
-                            header['value'] = hval.decode('utf-8', errors='replace')
+                            header["value"] = hval.decode("utf-8", errors="replace")
                     elif hwt == 0:
                         hval, ho = decode_varint(raw, ho)
                         if hfn == 1:
-                            header['key'] = str(hval)
+                            header["key"] = str(hval)
                         elif hfn == 2:
-                            header['value'] = str(hval)
-                frame['headers'].append(header)
+                            header["value"] = str(hval)
+                frame["headers"].append(header)
             elif field_num == 6:
-                frame['payload'] = raw
+                frame["payload"] = raw
         elif wire_type == 5:
             offset += 4
         elif wire_type == 1:

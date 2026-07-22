@@ -14,7 +14,7 @@ from .constants import FALLBACK_POLL_INTERVAL
 if TYPE_CHECKING:
     from .http_client import AilyHTTPClient
 
-log = logging.getLogger('aily')
+log = logging.getLogger("aily")
 
 
 @dataclass
@@ -28,8 +28,9 @@ class SessionWatcher:
       - events_stream() 提供 SSE 流
       - wait_for_completion() 阻塞等待完成
     """
+
     session_id: str
-    http_client: 'AilyHTTPClient'
+    http_client: "AilyHTTPClient"
     seen_seqs: Set[int] = field(default_factory=set)
     max_seq: int = 0
     run_completed: bool = False
@@ -42,13 +43,15 @@ class SessionWatcher:
         try:
             items = await self.http_client.fetch_events(self.session_id)
             for item in items:
-                seq = item.get('seq', 0)
+                seq = item.get("seq", 0)
                 self.seen_seqs.add(seq)
                 if seq > self.max_seq:
                     self.max_seq = seq
-            log.info(f'Session {self.session_id}: 初始拉取 {len(items)} 条历史事件, maxSeq={self.max_seq}')
+            log.info(
+                f"Session {self.session_id}: 初始拉取 {len(items)} 条历史事件, maxSeq={self.max_seq}"
+            )
         except Exception as e:
-            log.warning(f'Session {self.session_id}: 初始拉取失败: {e}')
+            log.warning(f"Session {self.session_id}: 初始拉取失败: {e}")
 
     async def on_ws_push(self):
         """WS 推送回调：触发增量拉取"""
@@ -61,31 +64,31 @@ class SessionWatcher:
         try:
             items = await self.http_client.fetch_events(self.session_id)
             new_items = sorted(
-                [it for it in items if it.get('seq', 0) not in self.seen_seqs],
-                key=lambda x: x.get('seq', 0),
+                [it for it in items if it.get("seq", 0) not in self.seen_seqs],
+                key=lambda x: x.get("seq", 0),
             )
             for item in new_items:
-                seq = item.get('seq', 0)
+                seq = item.get("seq", 0)
                 self.seen_seqs.add(seq)
                 if seq > self.max_seq:
                     self.max_seq = seq
-                payload = item.get('payload', {})
+                payload = item.get("payload", {})
                 if isinstance(payload, str):
                     try:
                         payload = json.loads(payload)
                     except Exception:
                         pass
                 event = {
-                    'type': item.get('type', 'unknown'),
-                    'seq': seq,
-                    'payload': payload,
-                    'timestamp': int(time.time()),
+                    "type": item.get("type", "unknown"),
+                    "seq": seq,
+                    "payload": payload,
+                    "timestamp": int(time.time()),
                 }
                 await self.event_queue.put(event)
-                if event['type'] == 'run.completed':
+                if event["type"] == "run.completed":
                     self.run_completed = True
         except Exception as e:
-            log.warning(f'Session {self.session_id}: 增量拉取失败: {e}')
+            log.warning(f"Session {self.session_id}: 增量拉取失败: {e}")
 
     def start_fallback(self):
         """启动兜底轮询任务"""
@@ -107,19 +110,19 @@ class SessionWatcher:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                log.warning(f'兜底轮询失败: {e}')
+                log.warning(f"兜底轮询失败: {e}")
 
     async def events_stream(self) -> AsyncGenerator[str, None]:
         """SSE 事件流生成器"""
         while True:
             try:
                 event = await asyncio.wait_for(self.event_queue.get(), timeout=30)
-                yield f'data: {json.dumps(event, ensure_ascii=False)}\n\n'
-                if event['type'] == 'run.completed':
-                    yield f'data: {json.dumps({"type": "stream.end", "reason": "run.completed"}, ensure_ascii=False)}\n\n'
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if event["type"] == "run.completed":
+                    yield f"data: {json.dumps({'type': 'stream.end', 'reason': 'run.completed'}, ensure_ascii=False)}\n\n"
                     break
             except asyncio.TimeoutError:
-                yield ': heartbeat\n\n'
+                yield ": heartbeat\n\n"
 
     async def wait_for_completion(self, timeout: float = 600) -> List[dict]:
         """阻塞等待 session 完成，返回所有新事件"""
@@ -129,7 +132,7 @@ class SessionWatcher:
             try:
                 event = await asyncio.wait_for(self.event_queue.get(), timeout=5)
                 events.append(event)
-                if event['type'] == 'run.completed':
+                if event["type"] == "run.completed":
                     return events
             except asyncio.TimeoutError:
                 if self.run_completed:

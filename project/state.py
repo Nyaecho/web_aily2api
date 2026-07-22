@@ -17,6 +17,7 @@ from .config import Config
 @dataclass
 class ServerState:
     """服务端运行时状态，持有所有核心组件实例"""
+
     config: Config
     http_client: Optional[AilyHTTPClient] = None
     agent_resolver: Optional[AgentResolver] = None
@@ -30,11 +31,16 @@ class ServerState:
             task_id=task_id,
         )
 
-    async def auto_watch_session(self, session_id: str, task_id: str = None) -> SessionWatcher:
+    async def auto_watch_session(
+        self, session_id: str, task_id: str = None
+    ) -> SessionWatcher:
         """自动启动一个 watcher（如果尚未存在）"""
         if not self.ws_manager or not self.ws_manager.connected:
             from fastapi import HTTPException
-            raise HTTPException(status_code=503, detail='WebSocket 未连接，请检查 cookie 是否过期')
+
+            raise HTTPException(
+                status_code=503, detail="WebSocket 未连接，请检查 cookie 是否过期"
+            )
         if session_id in self.ws_manager.watchers:
             return self.ws_manager.watchers[session_id]
         watcher = self.make_watcher(session_id, task_id)

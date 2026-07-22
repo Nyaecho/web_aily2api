@@ -6,28 +6,29 @@ import logging
 from dataclasses import dataclass
 from typing import Optional, List
 
-log = logging.getLogger('aily')
+log = logging.getLogger("aily")
 
 
 @dataclass
 class AgentInfo:
     """智能体信息"""
+
     agent_id: str
     name: str
-    description: str = ''
-    role: str = 'member'
-    avatar_url: str = ''
+    description: str = ""
+    role: str = "member"
+    avatar_url: str = ""
 
     def to_openai_model(self) -> dict:
         """转为 OpenAI /v1/models 格式"""
         return {
-            'id': self.name or self.agent_id,
-            'object': 'model',
-            'created': int(time.time()),
-            'owned_by': 'aily',
-            'agent_id': self.agent_id,
-            'description': self.description,
-            'role': self.role,
+            "id": self.name or self.agent_id,
+            "object": "model",
+            "created": int(time.time()),
+            "owned_by": "aily",
+            "agent_id": self.agent_id,
+            "description": self.description,
+            "role": self.role,
         }
 
 
@@ -49,26 +50,31 @@ class AgentResolver:
     async def _fetch_via_aily_cli(self) -> Optional[List[AgentInfo]]:
         """通过 aily-cli 子进程获取带 name 的智能体列表"""
         import subprocess
+
         try:
             result = subprocess.run(
-                ['aily-cli', 'agent', 'list'],
-                capture_output=True, text=True, timeout=10,
+                ["aily-cli", "agent", "list"],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if result.returncode != 0:
                 return None
             data = json.loads(result.stdout)
             agents = []
-            for m in data.get('members', []):
-                a = m.get('agent', {})
+            for m in data.get("members", []):
+                a = m.get("agent", {})
                 if not a:
                     continue
-                agents.append(AgentInfo(
-                    agent_id=a.get('agentId', m.get('agentId', '')),
-                    name=a.get('name', ''),
-                    description=a.get('description', ''),
-                    role=m.get('role', 'member'),
-                    avatar_url=a.get('avatarUrl', ''),
-                ))
+                agents.append(
+                    AgentInfo(
+                        agent_id=a.get("agentId", m.get("agentId", "")),
+                        name=a.get("name", ""),
+                        description=a.get("description", ""),
+                        role=m.get("role", "member"),
+                        avatar_url=a.get("avatarUrl", ""),
+                    )
+                )
             return agents if agents else None
         except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
             return None
@@ -78,17 +84,22 @@ class AgentResolver:
         members = await self.http.list_members()
         return [
             AgentInfo(
-                agent_id=m.get('agentId', ''),
-                name='',  # members API 不返回 name
-                role=m.get('role', 'member'),
+                agent_id=m.get("agentId", ""),
+                name="",  # members API 不返回 name
+                role=m.get("role", "member"),
             )
-            for m in members if m.get('agentId')
+            for m in members
+            if m.get("agentId")
         ]
 
     async def list_agents(self, force_refresh: bool = False) -> List[AgentInfo]:
         """列出所有可用智能体（带缓存）"""
         now = time.time()
-        if not force_refresh and self._cache and (now - self._cache_time) < self._cache_ttl:
+        if (
+            not force_refresh
+            and self._cache
+            and (now - self._cache_time) < self._cache_ttl
+        ):
             return self._cache
 
         # 策略 1: aily-cli 子进程（带 name）

@@ -8,12 +8,17 @@ from urllib.parse import urlencode
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from .constants import WS_URL, WS_SUBPROTOCOL, HEARTBEAT_INTERVAL, TICKET_REFRESH_INTERVAL
+from .constants import (
+    WS_URL,
+    WS_SUBPROTOCOL,
+    HEARTBEAT_INTERVAL,
+    TICKET_REFRESH_INTERVAL,
+)
 from .exceptions import CookieExpiredError
 from .proto import decode_frame, encode_frame
 from .session_watcher import SessionWatcher
 
-log = logging.getLogger('aily')
+log = logging.getLogger("aily")
 
 
 class WSConnectionManager:
@@ -40,32 +45,40 @@ class WSConnectionManager:
 
     def build_ws_url(self, ticket: str) -> str:
         """构造带 ticket 的 WS URL"""
-        params = urlencode({
-            'device_platform': 'web',
-            'version_code': 'fws_1.0.0',
-            'access_key': 'c8dd92325e6ecf2c7e8b9f66428110cc',
-            'fpid': '1595',
-            'aid': '1017241',
-            'device_id': self.config.device_id,
-            'xsack': '1', 'xaack': '0', 'xsqos': '1',
-            'qos_level': '2', 'qos_sdk_version': '2',
-            'ticket': ticket,
-        })
-        return f'{WS_URL}?{params}'
+        params = urlencode(
+            {
+                "device_platform": "web",
+                "version_code": "fws_1.0.0",
+                "access_key": "c8dd92325e6ecf2c7e8b9f66428110cc",
+                "fpid": "1595",
+                "aid": "1017241",
+                "device_id": self.config.device_id,
+                "xsack": "1",
+                "xaack": "0",
+                "xsqos": "1",
+                "qos_level": "2",
+                "qos_sdk_version": "2",
+                "ticket": ticket,
+            }
+        )
+        return f"{WS_URL}?{params}"
 
     async def connect(self):
         """建立 WS 连接"""
         try:
             self.ticket_data = await self.http.fetch_ticket()
-            ticket = self.ticket_data['ticket']
+            ticket = self.ticket_data["ticket"]
             url = self.build_ws_url(ticket)
-            log.info(f'连接 WebSocket: {WS_URL}')
+            log.info(f"连接 WebSocket: {WS_URL}")
             self.ws = await websockets.connect(
-                url, subprotocols=[WS_SUBPROTOCOL],
-                ping_interval=None, ping_timeout=None, close_timeout=5,
+                url,
+                subprotocols=[WS_SUBPROTOCOL],
+                ping_interval=None,
+                ping_timeout=None,
+                close_timeout=5,
             )
             self.connected = True
-            log.info('WebSocket 已连接')
+            log.info("WebSocket 已连接")
             self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
             self._ticket_task = asyncio.create_task(self._ticket_refresh_loop())
             self._receive_task = asyncio.create_task(self._receive_loop())
@@ -73,7 +86,7 @@ class WSConnectionManager:
         except CookieExpiredError:
             raise
         except Exception as e:
-            log.error(f'WS 连接失败: {e}')
+            log.error(f"WS 连接失败: {e}")
             self.connected = False
             return False
 
@@ -91,7 +104,7 @@ class WSConnectionManager:
 
     async def reconnect(self):
         """重连"""
-        log.info('重新连接 WebSocket...')
+        log.info("重新连接 WebSocket...")
         await self.disconnect()
         await asyncio.sleep(1)
         await self.connect()
@@ -102,11 +115,11 @@ class WSConnectionManager:
             try:
                 await asyncio.sleep(HEARTBEAT_INTERVAL)
                 if self.ws:
-                    await self.ws.send('hi')
+                    await self.ws.send("hi")
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                log.warning(f'心跳失败: {e}')
+                log.warning(f"心跳失败: {e}")
                 self.connected = False
                 break
 
@@ -115,19 +128,19 @@ class WSConnectionManager:
         while self.connected:
             try:
                 await asyncio.sleep(TICKET_REFRESH_INTERVAL)
-                log.info('续期 WS ticket...')
+                log.info("续期 WS ticket...")
                 self.ticket_data = await self.http.fetch_ticket()
-                log.info('ticket 续期成功，重连 WS...')
+                log.info("ticket 续期成功，重连 WS...")
                 await self.reconnect()
                 break
             except asyncio.CancelledError:
                 break
             except CookieExpiredError:
-                log.error('Cookie 过期，无法续期 ticket')
+                log.error("Cookie 过期，无法续期 ticket")
                 self.connected = False
                 break
             except Exception as e:
-                log.warning(f'ticket 续期失败: {e}')
+                log.warning(f"ticket 续期失败: {e}")
                 await asyncio.sleep(10)
 
     async def _receive_loop(self):
@@ -139,17 +152,21 @@ class WSConnectionManager:
                     break
                 data = await self.ws.recv()
                 if isinstance(data, str):
-                    if data in ('hi', 'pong'):
+                    if data in ("hi", "pong"):
                         continue
-                    log.debug(f'WS 文本消息: {data[:100]}')
+                    log.debug(f"WS 文本消息: {data[:100]}")
                     continue
                 frame = decode_frame(data)
-                if frame.get('service') == 0 and frame.get('method') == 5:
-                    log_id = frame.get('log_id', 0)
+                if frame.get("service") == 0 and frame.get("method") == 5:
+                    log_id = frame.get("log_id", 0)
                     ack = encode_frame(
-                        seq_id=0, log_id=log_id,
-                        service=9000, method=5,
-                        headers=[{'key': 'cursor_file_name', 'value': 'FILE_NOT_EXIST'}],
+                        seq_id=0,
+                        log_id=log_id,
+                        service=9000,
+                        method=5,
+                        headers=[
+                            {"key": "cursor_file_name", "value": "FILE_NOT_EXIST"}
+                        ],
                         frame_type=32,
                     )
                     await self.ws.send(ack)
@@ -159,11 +176,11 @@ class WSConnectionManager:
             except asyncio.CancelledError:
                 break
             except ConnectionClosed:
-                log.warning('WS 连接已关闭')
+                log.warning("WS 连接已关闭")
                 self.connected = False
                 break
             except Exception as e:
-                log.error(f'WS 接收错误: {e}')
+                log.error(f"WS 接收错误: {e}")
                 await asyncio.sleep(0.5)
 
     def add_watcher(self, watcher: SessionWatcher):

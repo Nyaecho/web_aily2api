@@ -7,11 +7,12 @@ from pydantic import BaseModel
 
 # ─── Aily Workbench API 模型 ──
 
+
 class CreateTaskRequest(BaseModel):
     title: str
-    description: str = ''
+    description: str = ""
     agent: Optional[str] = None  # 智能体名称或 ID，如 "前端" 或 "agent_xxx"
-    kind: str = 'oneshot'
+    kind: str = "oneshot"
     auto_watch: bool = True  # 创建后自动启动 watch
 
 
@@ -34,6 +35,7 @@ class StopRequest(BaseModel):
 
 
 # ─── OpenAI 兼容 API 模型 ──
+
 
 class OpenAIMessage(BaseModel):
     role: str
