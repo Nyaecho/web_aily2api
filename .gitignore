@@ -51,7 +51,6 @@ config.json
 
 # Scripts
 *.cmd
-*.ps1
 
 # Environment variables
 .env
